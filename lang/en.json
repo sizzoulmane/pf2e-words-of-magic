@@ -1,0 +1,17 @@
+{
+  "WOM.ModuleTitle": "PF2e Words of Magic",
+  "WOM.Settings.Enabled.Name": "Enable PF2e Words of Magic",
+  "WOM.Settings.Enabled.Hint": "Master switch. When off, no incantations are generated.",
+  "WOM.Settings.ShowInChat.Name": "Show Incantation in Chat",
+  "WOM.Settings.ShowInChat.Hint": "Post a styled incantation card to chat when a spell is cast.",
+  "WOM.Settings.ShowAboveToken.Name": "Show Incantation Above Token",
+  "WOM.Settings.ShowAboveToken.Hint": "Display the incantation as scrolling text above the caster's token.",
+  "WOM.Settings.SuppressCantrips.Name": "Suppress Cantrip Incantations",
+  "WOM.Settings.SuppressCantrips.Hint": "Cantrips are cast constantly — disable their incantations to reduce noise.",
+  "WOM.Settings.ChatVisibility.Name": "Chat Card Visibility",
+  "WOM.Settings.ChatVisibility.Hint": "Who can see the incantation chat card.",
+  "WOM.Settings.ScrollDuration.Name": "Floating Text Duration (seconds)",
+  "WOM.Settings.ScrollDuration.Hint": "How long the incantation text floats above the token.",
+  "WOM.Settings.DefaultTradition.Name": "Default Tradition Fallback",
+  "WOM.Settings.DefaultTradition.Hint": "Used when tradition cannot be determined from the actor or spell data."
+}
