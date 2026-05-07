@@ -1,9 +1,9 @@
 # PF2e Words of Magic
 
-> *"The worlds are dark and full of horrors. The players are goofs and full of hubris."*
+> *"Live by the die and die by the die!"*
 > — Death Dreams Studio
 
-A Foundry VTT module for **Pathfinder 2e** that generates tradition-flavored spell incantations whenever a spell is cast. Inspired by the Words of Power system from *Ultima / Ultima Online* — each spell produces a three-word phonetic phrase from the caster's tradition, displayed as animated canvas text above their token and as a styled card in chat.
+A Foundry VTT module for **Pathfinder 2e** that generates tradition-based spell incantations whenever a spell is cast. Inspired by the Words of Power system from *Ultima / Ultima Online* — each spell produces a three-word phonetic phrase from the caster's tradition, displayed as animated canvas text above their token and as a stylized card in chat.
 
 **Formula:** `[Delivery] + [Element] + [Signature]`
 
@@ -27,7 +27,7 @@ Dark Divine casters (fiend, undead, unholy, and similar traits) override the Div
 | Foundry VTT | v13+ (verified 13.348) |
 | PF2e System | v6.0+ (verified 7.9.1) |
 
-No other modules required. Compatible with Dice So Nice.
+No other modules required.
 
 ---
 
@@ -44,7 +44,7 @@ No other modules required. Compatible with Dice So Nice.
 Paste into **Settings → Manage Modules → Install Module**:
 
 ```
-https://github.com/sizzoul/pf2e-words-of-magic/releases/latest/download/module.json
+https://github.com/sizzoulmane/pf2e-words-of-magic/releases/latest/download/module.json
 ```
 
 ---
@@ -172,10 +172,10 @@ To add a new element: add it to `ELEMENTS`, `TIER_NAMES`, and register it in the
 
 ## Credits
 
-- **Author:** sizzoul
-- **Studio:** [Death Dreams Studio](https://www.twitch.tv/DeathDreamsStudio)
+- **Author:** sizzoulmane
+- **Studio:** [Death Dreams Studio](https://www.deathdreams.studio)
 - **Inspiration:** Ultima / Ultima Online Words of Power
-- **Built for:** *Echoes of Death and Steel* — live Mondays 7PM PST
+- **Built for:** *fun!*
 
 ### Fonts
 
