@@ -123,6 +123,15 @@ function _registerSettings() {
     scope: "world", config: true, type: Boolean, default: true,
   });
 
+  game.settings.register(MODULE_ID, "easterEggs", {
+    name: "Easter Egg Incantations",
+    hint: "Rare chance (25%) for certain spells to display incantations from other franchises — Ultima, Skyrim, Harry Potter. Styling stays in the caster's tradition. Pure flavor.",
+    scope:   "world",
+    config:  true,
+    type:    Boolean,
+    default: true,
+  });
+
   game.settings.register(MODULE_ID, "suppressCantrips", {
     name: "Suppress Cantrip Incantations",
     hint: "Skip incantations for cantrips to reduce noise at high levels.",

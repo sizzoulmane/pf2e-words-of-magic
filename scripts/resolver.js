@@ -22,6 +22,155 @@ import { DARK_DIVINE_TRAITS } from "./font-config.js";
 
 const MODULE_ID = "pf2e-words-of-magic";
 
+// ── Easter egg incantations ───────────────────────────────────────────────────
+// Keyed by PF2e compendium item ID (last segment of documentUuid).
+// UUIDs are stable across pre-remaster and remaster — the PF2e team updates
+// existing items in place when renaming spells. Tradition styling is always
+// preserved; only the phrase changes.
+//
+// Sources: Ultima Online Words of Power (Magery, Mysticism, Necromancy, Chivalry)
+//          Skyrim Dragon Shouts (Thu'um) — all 20 base game shouts
+//          Armageddon — the 8-word UO phrase for world-ending spells
+//
+// Multiple phrases per UUID = random pick on trigger.
+
+const EASTER_EGG_CHANCE = 0.25;
+
+const EASTER_EGG_UUIDS = {
+  // ── UO MAGERY — Cantrips ──────────────────────────────────────────────────
+  "6DfLZBl8wKIV03Iq": ["In Flam"],                          // Ignition
+  "qwZBXN6zBoB9BHXE": ["In Flam"],                          // Divine Lance
+  "gYjPm7YwGtEa1oxh": ["In An Flam"],                       // Ray of Frost
+  "8TQiFzGf4feoHeH0": ["In An Flam","Fo Krah Diin"],        // Chilling Spray
+  "IxhGEKl63R4QBvkj": ["In An Flam"],                       // Frostbite
+  "kBhaPuzLUSwS6vVf": ["In Ort"],                           // Electric Arc
+  "gISYsBFby1TiXfBt": ["In Nox Ylem"],                      // Acid Splash
+  "thAHF1zxNplLCJPO": ["In Nox Ylem"],                      // Caustic Blast
+  "mAMEt4FFbdqoRnkN": ["An Mani"],                          // Void Warp
+  "WBmvzNDfpwka3qT4": ["In Lor"],                           // Light
+  "TVKNbcgTee19PXZR": ["Flam Sanct","Ort Sanct"],           // Shield
+  "aAbfKn8maGjJjk2W": ["Ort Sanct"],                        // Mystic Armor
+  "gMODOGamz88rgHuf": ["Ort Sanct"],                        // Protection
+  "CIjj9CU5ekeq1oLT": ["Ort Sanct"],                        // Warding Aggression
+  "8ViwItUgwT4lOvvb": ["Ort Sanct"],                        // False Vitality
+  "SnjhtQYexDtNDdEg": ["In Mani"],                          // Stabilize
+  "rfZpqmj0AIIdkVIs": ["In Mani"],                          // Heal
+  "szIyEsvihc5e1w8n": ["In Mani"],                          // Soothe
+  "4gBIw4IDrSfFHik4": ["Rel Wis"],                          // Daze
+  "J7Y7tl0bbdz7TcCc": ["Rel Wis","Krii Lun Aus"],           // Enfeeble
+  "izcxFQFwf3woCnFs": ["Uus Wis"],                          // Guidance
+  "pwzdSlJgYqN7bs2w": ["Ort Por Ylem"],                     // Telekinetic Hand
+  "gpzpAAAJ1Lza2JVl": ["Wis Quas","Laas Yah Nir"],          // Detect Magic
+  // ── UO MAGERY — Spells ────────────────────────────────────────────────────
+  "sxQZ6yqTn0czJxVd": ["Vas Flam","Vas Ort Flam","Yol Toor Shul"], // Fireball
+  "E3X2RbzWHCdz7gsk": ["Kal Vas Flam"],                     // Flame Strike
+  "y6rAdMK6EFlV6U0t": ["Kal Vas Xen Flam","Yol Toor Shul"], // Breathe Fire
+  "3puDanGfpEt6jK5k": ["Kal Vas An Flam","Fo Krah Diin"],   // Cone of Cold
+  "jfVCuOpzC6mUrf6f": ["Kal Vas Xen An Flam","Fus Ro Dah"], // Hydraulic Push
+  "Y3G6Y6EDgCY0s3fq": ["Kal Vas Xen An Flam"],              // Hydraulic Torrent
+  "kHyjQbibRGPNCixx": ["Kal Des Ylem","Iiz Slen Nus"],       // Ice Storm
+  "R5FHRv7VqyRnxg2t": ["In An Flam Grav","Iiz Slen Nus"],   // Wall of Ice
+  "9AAkVUCwF6WVNNY2": ["Por Ort Grav"],                     // Lightning Bolt
+  "TDNlDWbYb58Y55Da": ["Vas Ort Grav","Strun Bah Qo"],      // Chain Lightning
+  "gKKqvLohtrSJj3BM": ["In Por Ylem","Fus Ro Dah"],         // Force Barrage
+  "69L70wKfGDY66Mk9": ["Kal Ort Por","Sanctum Viatas"],     // Teleport
+  "VlNcjmYyu95vOUe8": ["Kal Ort Por","Wuld Nah Kest"],      // Translocate
+  "aEM2cttJ2eYcLssW": ["Kal Ort Por","Wuld Nah Kest"],      // Fleet Step
+  "Hnc7eGi7vyZenAIm": ["In Vas Mani","In Vas Mani Hur"],    // Breath of Life
+  "IkGYwHRLhkuoGReG": ["An Corp"],                          // Raise Dead
+  "HpIJTVqgXorH9X0L": ["An Corp"],                          // Revival
+  "SnaLVgxZ9ryUFmUr": ["An Nox"],                           // Restoration
+  "SUKaxVZW2TlM8lu0": ["An Nox","Vas An Nox"],              // Cleanse Affliction
+  "DCQHaLrYXMI37dvW": ["An Ex Por"],                        // Paralyze
+  "9s5tqqXNzcoKamWx": ["In Ex Grav"],                       // Web
+  "XXqE1eY3w3z6xJCB": ["An Lor Xen"],                       // Invisibility
+  "i35dpZFI7jZcRoBo": ["Kal In Ex"],                        // Illusory Disguise
+  "1meVElIu1CEVYWkv": ["In Nox"],                           // Noxious Vapors
+  "D7ZEhTNIDWDLC2J4": ["In Nox"],                           // Puff of Poison
+  "MlpbeZ61Euhl0d60": ["In Nox Grav","In Vas Nox"],         // Toxic Cloud
+  "kOa055FIrO9Smnya": ["In Sanct Ylem"],                    // Wall of Stone
+  "7Iela4GgVeO3LfAo": ["In Sanct Grav"],                    // Wall of Force
+  "peCF6VArm8urfwxZ": ["In Jux Hur Ylem"],                  // Blade Barrier
+  "9HpwDN4MYQJnW0LG": ["An Ort","An Ort Sanct"],            // Dispel Magic
+  "WsUwpfmhKrKwoIe3": ["Des Por","Iiz Slen Nus","Tiid Klo Ul"], // Slow
+  "TTwOKGqmZeKSyNMH": ["An Des Por"],                       // Gentle Landing
+  "o4lRVTwSxnOOn5vl": ["In Zu"],                            // Sleep
+  "fRUxp4G9kG816XAt": ["Vas Zu"],                           // Lure Dream
+  "vLA0q0WOK2YPuJs6": ["An Xen Ex"],                        // Charm
+  "aIHY2DArKFweIrpf": ["An Xen Ex"],                        // Command
+  "XSujb7EsSwKl19Uu": ["Rel Sanct"],                        // Bless
+  "7ZinJNzxq0XF0oMx": ["Vas Des Sanct","Krii Lun Aus"],     // Bane
+  "2BV2yYPfVJ5zirZt": ["Vas Uus Sanct"],                    // Mountain Resilience
+  "8kJbiBEjMWG4VUjs": ["Por Corp Wis","Wis An Ben","Krii Lun Aus"], // Warp Mind
+  "9BnhadUO8FMLmeZ3": ["Por Corp Wis"],                     // Mind Probe
+  "BilnTGuXrof9Dt9D": ["Por Corp Wis"],                     // Synaptic Pulse
+  "o6YCGx4lycsYpww4": ["Ex Uus Por","Tiid Klo Ul","Su Grah Dun"], // Haste
+  "1dsahW4g1ggXtypx": ["Kal Vas An Tym","Tiid Klo Ul"],     // Freeze Time (was Time Stop)
+  "Azoh0BSoCASrA1lr": ["An Por"],                           // Lock
+  "6Ot4N22t5tPD51BO": ["Ex Por"],                           // Knock
+  "gfPjmG6Fe6D3MFjl": ["Vas Ylem Rel","Raan Mir Tah"],      // Pest Form
+  "5c692cCcTDXjSEzk": ["Vas Ylem Rel","Od Ah Viing"],       // Dragon Form
+  "NzXpEzcZAjuDTZjK": ["Vas Ylem Rel","Od Ah Viing"],       // Aerial Form
+  "wp09USMB3GIW1qbp": ["Vas Ylem Rel"],                     // Animal Form
+  "8hKW4mWQyLnkHVta": ["Vas Corp Por"],                     // Whirlwind
+  "5bTt2CvYHPvaR7QQ": ["Vas Rel Por"],                      // Interplanar Teleport
+  "U13bC0tNgrlHoeTK": ["Vas Rel Por"],                      // Gate
+  "4YnON9JHYqtLzccu": ["Kal Xen","Raan Mir Tah"],           // Summon Animal
+  "lpT6LotUaQPfinjj": ["Kal Vas Xen Ylem"],                 // Summon Elemental
+  "29ytKctjg7qSW2ff": ["Kal Vas Xen Corp"],                 // Summon Fiend
+  // ── UO NECROMANCY ────────────────────────────────────────────────────────
+  "fd31tAHSSGXyOxW6": ["Rel Xen An Sanct"],                 // Vampiric Exsanguination
+  "TaaMEYdZXQXF0Sks": ["Rel Xen An Sanct"],                 // Blood Vendetta
+  "eexkxcqnkXazsGfK": ["Vas Rel Des Mani"],                 // Enervation (Wither)
+  "9WGeBwIIbbUuWKq0": ["Kal Xen Bal"],                      // Summon Undead
+  "bay4AfSu2iIozNNW": ["Ort Corp Grav","Dispiro Malas"],    // Banishment
+  "GUeRTriJkMlMlVrk": ["Ort Corp Grav"],                    // Bind Undead
+  "6ZIKB0151LUR19Rw": ["Pas Tym An Sanct"],                 // Ill Omen
+  "0JWyMwVnLxX9CDYQ": ["Uus Corp"],                         // Rouse Skeletons
+  // ── UO MYSTICISM ─────────────────────────────────────────────────────────
+  "WqPhJNzLa8vSjrH6": ["In Jux Por Ylem"],                  // Animated Assault
+  "Fq9yCbqI2RDt6Orw": ["In Jux Por Ylem","Hun Kaal Zoor"],  // Spiritual Weapon
+  "znv4ECL7ZtuiagtA": ["In Rel Ylem"],                      // Petrify
+  "wdA52JJnsuQWeyqz": ["In Corp Ylem"],                     // Harm
+  "e9UJoVYUd5kJWUpi": ["Kal Vas Xen Corp Ylem"],            // Summon Giant
+  // ── UO CHIVALRY ──────────────────────────────────────────────────────────
+  "DyiD239dNS7RIxZE": ["Augus Luminos"],                    // Holy Light
+  "hVU9msO9yGkxKZ3J": ["Divinum Furis"],                    // Divine Wrath
+  "sX2o0HH4RjJDAZ8C": ["Divinum Furis"],                    // Divine Decree
+  "y3jlOfgsQH1JjkJE": ["Consecrus Arma"],                   // Anointed Ground
+  "M9TiCE1vlG1j2faM": ["Dium Prostra"],                     // Martyr's Intervention
+  // ── ARMAGEDDON ───────────────────────────────────────────────────────────
+  "x7SPrsRxGb2Vy2nu": ["Vas Kal An Mani In Corp Hur Tym"],  // Earthquake
+  "r4HLQcYwB62bTayl": ["Vas Kal An Mani In Corp Hur Tym"],  // Storm of Vengeance
+  "O7ZEqWjwdKyo2CUv": ["Vas Kal An Mani In Corp Hur Tym"],  // Volcanic Eruption
+  "4WS7HrFjwNvTn8T2": ["Vas Kal An Mani In Corp Hur Tym"],  // Implosion
+  "wLIvH0AT1u7oa64N": ["Vas Kal An Mani In Corp Hur Tym"],  // Cataclysm
+  // ── SKYRIM — All 20 Shouts ───────────────────────────────────────────────
+  "sPHcuLIKj9SDaDAD": ["Fus Ro Dah"],                       // Kinetic Ram
+  "mrDi3v933gsmnw25": ["Fus Ro Dah","Zun Haal Viik"],       // Telekinetic Maneuver
+  "D2nPKbIS67m9199U": ["Feim Zii Gron"],                    // Ethereal Jaunt
+  "V8wXOsoejQhe6CyG": ["Feim Zii Gron"],                    // Vapor Form
+  "BKIet436snMNcnez": ["Fo Krah Diin"],                     // Polar Ray
+  "xxWhyl81w3ckslAU": ["Fo Krah Diin"],                     // Howling Blizzard
+  "JyT346VmGtRLsDnV": ["Strun Bah Qo"],                     // Lightning Storm
+  "r7ihOgKv19eJQnik": ["Krii Lun Aus"],                     // Disintegrate
+  "1xbFBQDRs0hT5xZ9": ["Zun Haal Viik"],                    // Shatter
+  "4koZzrnMXhhosn0D": ["Faas Ru Maar"],                     // Fear
+  "R8bqnYiThB6MYTxD": ["Faas Ru Maar"],                     // Phantom Pain
+  "gPvtmKMRpg9I9D7H": ["Joor Zah Frul"],                    // Earthbind
+  "KqvqNAfGIE5a9wSv": ["Su Grah Dun"],                      // Heroism
+  "BBvV7qoXGdw09q1C": ["Raan Mir Tah"],                     // Speak with Animals
+  "b515AZlB0sridKSq": ["Kaan Drem Ov"],                     // Calm
+  "jwK43yKsHTkJQvQ9": ["Laas Yah Nir"],                     // See the Unseen
+  "uqlxMQQeSGWEVjki": ["Laas Yah Nir"],                     // Truesight
+  "zfn5RqAdF63neqpP": ["Lok Vah Koor"],                     // Control Water
+  "kghwmH3tQjMIhdH1": ["Od Ah Viing"],                      // Summon Dragon
+  "jQdm301h6e8hIY4U": ["Hun Kaal Zoor"],                    // Spiritual Guardian
+  "yV7Ouzaoe7DHLESI": ["Zul Mey Gut"],                      // Ventriloquism
+  "0zU8CPejjQFnhZFI": ["Zul Mey Gut"],                      // Figment
+  "atlgGNI1E1Ox3O3a": ["Zul Mey Gut"],                      // Ghost Sound
+};
+
 // ── Priority-ordered damage traits ───────────────────────────────────────────
 const DAMAGE_TRAITS = [
   "fire", "cold", "electricity", "acid", "void", "vitality",
@@ -379,7 +528,12 @@ export class WordsOfMagicResolver {
     );
 
     // Full three-word incantation
-    const phrase = `${deliveryWord} ${elementWord} ${signatureWord}`;
+    // Easter egg — UUID lookup before assembling the final phrase.
+    // Checks message.flags.pf2e.origin.uuid against EASTER_EGG_UUIDS.
+    // Styling is never touched — only the phrase changes.
+    const easterEgg = this._resolveEasterEgg(message);
+
+    const phrase = easterEgg ?? `${deliveryWord} ${elementWord} ${signatureWord}`;
 
     return {
       spell,
@@ -400,7 +554,29 @@ export class WordsOfMagicResolver {
   }
 
   /**
-   * Check whether an actor carries traits marking them as a dark caster.
+   * UUID-based easter egg lookup.
+   * Extracts the item ID from message.flags.pf2e.origin.uuid, checks it
+   * against EASTER_EGG_UUIDS, then rolls EASTER_EGG_CHANCE.
+   * Multiple phrases per UUID are picked randomly — adds variety for spells
+   * that map to both UO and Skyrim incantations.
+   */
+  static _resolveEasterEgg(message) {
+    if (!game.settings.get(MODULE_ID, "easterEggs")) return null;
+
+    const originUuid = message.flags?.pf2e?.origin?.uuid ?? "";
+    const itemId     = originUuid.split(".").pop();
+    if (!itemId) return null;
+
+    const phrases = EASTER_EGG_UUIDS[itemId];
+    if (!phrases?.length) return null;
+    if (Math.random() > EASTER_EGG_CHANCE) return null;
+
+    const phrase = phrases[Math.floor(Math.random() * phrases.length)];
+    console.debug(`PF2e Words of Magic | Easter egg: "${phrase}" for UUID ${itemId}`);
+    return phrase;
+  }
+
+  /**
    *
    * PF2e v7+ exposes actor.traits as a proper Set — use .has() for O(1) checks.
    * Falls back to actor.system.traits.value array for older data shapes.
