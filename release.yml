@@ -1,22 +1,31 @@
 name: Release
-
+ 
 on:
   push:
     tags:
       - 'v*'
-
+ 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
+ 
       - name: Create zip
         run: zip -r pf2e-words-of-magic.zip . --exclude "*.git*" --exclude ".github/*"
-
+ 
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
           files: pf2e-words-of-magic.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+ 
+      - name: Submit to Foundry
+        env:
+          FOUNDRY_API_KEY: ${{ secrets.FOUNDRY_API_KEY }}
+        run: |
+          curl -X POST https://foundryvtt.com/api/packages/pf2e-words-of-magic/release/ \
+            -H "Authorization: $FOUNDRY_API_KEY" \
+            -H "Content-Type: application/json" \
+            -d "{\"version\": \"${{ github.ref_name }}\", \"manifest\": \"https://github.com/sizzoulmane/pf2e-words-of-magic/releases/latest/download/module.json\", \"dry-run\": false}"
