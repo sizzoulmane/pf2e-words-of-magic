@@ -1,0 +1,22 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create zip
+        run: zip -r pf2e-words-of-magic.zip . --exclude "*.git*" --exclude ".github/*"
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: pf2e-words-of-magic.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
