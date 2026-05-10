@@ -531,7 +531,7 @@ export class WordsOfMagicResolver {
     // Easter egg — UUID lookup before assembling the final phrase.
     // Checks message.flags.pf2e.origin.uuid against EASTER_EGG_UUIDS.
     // Styling is never touched — only the phrase changes.
-    const easterEgg = this._resolveEasterEgg(message);
+    const easterEgg = this._resolveEasterEgg(message, spell);
 
     const phrase = easterEgg ?? `${deliveryWord} ${elementWord} ${signatureWord}`;
 
@@ -555,24 +555,36 @@ export class WordsOfMagicResolver {
 
   /**
    * UUID-based easter egg lookup.
-   * Extracts the item ID from message.flags.pf2e.origin.uuid, checks it
-   * against EASTER_EGG_UUIDS, then rolls EASTER_EGG_CHANCE.
-   * Multiple phrases per UUID are picked randomly — adds variety for spells
-   * that map to both UO and Skyrim incantations.
+   *
+   * Spell items on actors have a local UUID (Actor.xxx.Item.yyy) — not the
+   * compendium ID. The compendium source is stored in spell.flags.core.sourceId
+   * as "Compendium.pf2e.spells-srd.Item.{itemId}". We check that first, then
+   * fall back to the origin UUID in the message flags in case the spell was
+   * cast directly from the compendium or a synthetic context.
    */
-  static _resolveEasterEgg(message) {
+  static _resolveEasterEgg(message, spell) {
     if (!game.settings.get(MODULE_ID, "easterEggs")) return null;
 
-    const originUuid = message.flags?.pf2e?.origin?.uuid ?? "";
-    const itemId     = originUuid.split(".").pop();
-    if (!itemId) return null;
+    // Primary: compendium source ID stored on the spell item
+    const sourceId  = spell?.flags?.core?.sourceId ?? spell?.sourceId ?? "";
+    // Fallback: pf2e.origin.uuid — may already be a compendium UUID in some flows
+    const originId  = message.flags?.pf2e?.origin?.uuid ?? "";
+    // Check both; prefer whichever contains the known compendium namespace
+    const compendiumUuid = [sourceId, originId]
+      .find(u => u.includes("Compendium.pf2e.spells-srd.Item.")) ?? "";
+    const itemId = compendiumUuid.split(".").pop();
+
+    if (!itemId) {
+      console.debug(`PF2e Words of Magic | Easter egg: no compendium UUID found (sourceId="${sourceId}", origin="${originId}")`);
+      return null;
+    }
 
     const phrases = EASTER_EGG_UUIDS[itemId];
     if (!phrases?.length) return null;
     if (Math.random() > EASTER_EGG_CHANCE) return null;
 
     const phrase = phrases[Math.floor(Math.random() * phrases.length)];
-    console.debug(`PF2e Words of Magic | Easter egg: "${phrase}" for UUID ${itemId}`);
+    console.debug(`PF2e Words of Magic | Easter egg: "${phrase}" for ${itemId} (${spell?.name})`);
     return phrase;
   }
 
