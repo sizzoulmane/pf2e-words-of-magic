@@ -125,7 +125,7 @@ function _registerSettings() {
 
   game.settings.register(MODULE_ID, "easterEggs", {
     name: "Easter Egg Incantations",
-    hint: "Rare chance (25%) for certain spells to display incantations from other franchises — Ultima, Skyrim, Harry Potter. Styling stays in the caster's tradition. Pure flavor.",
+    hint: "Rare chance (20%) for certain spells to display incantations from other franchises — Ultima, Skyrim, Harry Potter. Styling stays in the caster's tradition. Pure flavor.",
     scope:   "world",
     config:  true,
     type:    Boolean,
