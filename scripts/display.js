@@ -264,22 +264,33 @@ export class WordsOfMagicDisplay {
     const baseTravel = Math.max(w, h) / 2 + 80 + Math.max(0, offset);
     const staggerMs  = Math.min(280, duration * 0.12);
 
-    const words  = [incantation.deliveryWord, incantation.elementWord, incantation.signatureWord];
+    // Easter egg: use the phrase words instead of the formula words.
+    // Long phrases (4+ words, e.g. Armageddon) rise as a single centered
+    // text rather than bursting apart — keeps it readable and dramatic.
+    let words;
+    if (incantation.isEasterEgg) {
+      const phraseWords = incantation.phrase.split(" ");
+      if (phraseWords.length <= 3) {
+        words = phraseWords;
+      } else {
+        // Show as single rising text — reuse the scroll path
+        return this._showEasterEggRise(tokenObj, incantation);
+      }
+    } else {
+      words = [incantation.deliveryWord, incantation.elementWord, incantation.signatureWord];
+    }
+
     const angles = [-3 * Math.PI / 4, -Math.PI / 2, -Math.PI / 4];
 
     canvas.interface.sortableChildren = true;
 
-    // Delay one animation frame so the font atlas is fully populated
-    // before we create any Text objects that need to measure themselves.
     requestAnimationFrame(() => {
       words.forEach((word, i) => {
-        // Fresh TextStyle per word — never share a style instance between
-        // multiple PIXI.Text objects or metrics corruption will occur.
         const style = makeStyle(incantation.tradition, incantation.isDarkDivine);
 
         const delay   = i * staggerMs;
         const wordDur = duration - delay;
-        const angle   = angles[i] + (Math.random() - 0.5) * 0.12;
+        const angle   = (angles[i] ?? -Math.PI / 2) + (Math.random() - 0.5) * 0.12;
         const travel  = baseTravel + Math.random() * 15;
 
         const obj = new PIXI.Text(word, style);
@@ -311,6 +322,49 @@ export class WordsOfMagicDisplay {
 
         canvas.app.ticker.add(tick);
       });
+    });
+  }
+
+  // ── EASTER EGG RISE ──────────────────────────────────────────────────────────
+  /**
+   * Long easter egg phrases (4+ words) rise as a single text directly above
+   * the token. Used for Armageddon and other multi-word incantations that
+   * would be unreadable if burst apart.
+   */
+  static _showEasterEggRise(tokenObj, incantation) {
+    const { cx, cy, h } = tokenBounds(tokenObj);
+    const duration = get("scrollDuration") * 1000;
+    const offset   = get("radiusOffset") ?? 0;
+    const travel   = h / 2 + 100 + Math.max(0, offset);
+
+    canvas.interface.sortableChildren = true;
+
+    requestAnimationFrame(() => {
+      const style = makeStyle(incantation.tradition, incantation.isDarkDivine);
+      const obj   = new PIXI.Text(incantation.phrase, style);
+      obj.anchor.set(0.5, 0.5);
+      obj.position.set(cx, cy);
+      obj.alpha  = 0;
+      obj.zIndex = 999;
+      canvas.interface.addChild(obj);
+
+      const start = performance.now();
+
+      const tick = () => {
+        const p    = Math.min((performance.now() - start) / duration, 1);
+        const ease = 1 - Math.pow(1 - p, 2);
+
+        obj.alpha = p < 0.40 ? p / 0.40 : 1 - (p - 0.40) / 0.60;
+        obj.y     = cy - ease * travel;
+
+        if (p >= 1) {
+          canvas.app.ticker.remove(tick);
+          obj.parent?.removeChild(obj);
+          obj.destroy();
+        }
+      };
+
+      canvas.app.ticker.add(tick);
     });
   }
 
@@ -407,7 +461,7 @@ export class WordsOfMagicDisplay {
     const traditionHTML = get("showTraditionTag")
       ? `<span class="wom-tag">${tLabel}</span>` : ``;
 
-    const breakdownHTML = get("showWordBreakdown") ? `
+    const breakdownHTML = get("showWordBreakdown") && !incantation.isEasterEgg ? `
   <div class="wom-breakdown">
     <span class="wom-word wom-delivery"  title="${dLabel} — Delivery">${incantation.deliveryWord}</span>
     <span class="wom-sep">+</span>
@@ -416,7 +470,7 @@ export class WordsOfMagicDisplay {
     <span class="wom-word wom-signature" title="Signature (Rank ${incantation.castRank || "C"})">${incantation.signatureWord}</span>
   </div>` : ``;
 
-    const metaHTML = get("showMetaLine")
+    const metaHTML = get("showMetaLine") && !incantation.isEasterEgg
       ? `<div class="wom-meta">${dLabel} &middot; ${elLabel} (${incantation.tierName}) &middot; Tier&nbsp;${incantation.tier} &middot; Rank&nbsp;${incantation.castRank || "C"}</div>`
       : ``;
 

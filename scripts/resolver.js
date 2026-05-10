@@ -548,6 +548,7 @@ export class WordsOfMagicResolver {
       elementWord,
       signatureWord,
       isDarkDivine,
+      isEasterEgg:   !!easterEgg,
       phrase,
       actor,
     };
