@@ -40,5 +40,7 @@
     }
   ],
   "url": "https://github.com/sizzoulmane/pf2e-words-of-magic",
-  "bugs": "https://github.com/sizzoulmane/pf2e-words-of-magic/issues"
+  "bugs": "https://github.com/sizzoulmane/pf2e-words-of-magic/issues",
+  "download": "https://github.com/sizzoulmane/pf2e-words-of-magic/releases/latest/download/pf2e-words-of-magic.zip",
+  "manifest": "https://raw.githubusercontent.com/sizzoulmane/pf2e-words-of-magic/main/module.json"
 }
