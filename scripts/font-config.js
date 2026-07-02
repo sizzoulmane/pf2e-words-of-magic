@@ -157,26 +157,22 @@ export async function ensureFontLoaded(path, sizeHint = 40) {
 
 // ── Font Config Dialog ────────────────────────────────────────────────────────
 /**
- * FontConfigApp must extend FormApplication or ApplicationV2 to satisfy
- * Foundry's registerMenu validation check. We extend FormApplication but
- * override render() to open a plain Dialog instead — the FormApplication
- * lifecycle (templates, _updateObject, etc) is never invoked.
+ * FontConfigApp extends ApplicationV2 — the correct v14 base class.
+ * registerMenu accepts ApplicationV2 subclasses directly in v14.
+ * We override _renderHTML to open the DialogV2 UI directly rather than
+ * rendering a Handlebars template, keeping all logic self-contained.
  */
-export class FontConfigApp extends FormApplication {
-  static get defaultOptions() {
-    return foundry.utils.mergeObject(super.defaultOptions, {
-      id:    "wom-font-config",
-      title: "PF2e Words of Magic — Font Configuration",
-    });
-  }
+export class FontConfigApp extends foundry.applications.api.ApplicationV2 {
+  static DEFAULT_OPTIONS = {
+    id:       "wom-font-config",
+    window:   { title: "PF2e Words of Magic — Font Configuration" },
+    position: { width: 560 },
+  };
 
-  // Intercept render — open Dialog and do NOT call super.render()
-  render() {
+  // Override render to open the DialogV2 instead of a standard app window
+  async render(options = {}) {
     openFontConfigDialog();
   }
-
-  // Required by FormApplication — never called since we skip the pipeline
-  async _updateObject() {}
 }
 
 async function openFontConfigDialog() {
@@ -237,18 +233,25 @@ ${sep}
   ${rows}
 </div>`;
 
-  // Create the dialog
-  const dialog = new Dialog({
-    title:   "PF2e Words of Magic — Font Configuration",
+  // ── DialogV2 (v14 replacement for Dialog) ─────────────────────────────────
+  // DialogV2 callbacks receive a native HTMLElement, not jQuery.
+  // Use .querySelector() instead of .find().
+  await foundry.applications.api.DialogV2.wait({
+    window:  { title: "PF2e Words of Magic — Font Configuration" },
     content,
-    buttons: {
-      save: {
-        icon:  "<i class='fas fa-save'></i>",
-        label: "Save Fonts",
-        callback: async (html) => {
+    modal:   false,
+    position: { width: 560 },
+    buttons: [
+      {
+        action:  "save",
+        icon:    "fas fa-save",
+        label:   "Save Fonts",
+        default: true,
+        callback: async (event, button, dialog) => {
+          const html = dialog.element;
           for (const row of ROWS) {
-            const input    = html.find(`#wom-input-${row.key}`);
-            const path     = (input.val() ?? "").trim();
+            const input    = html.querySelector(`#wom-input-${row.key}`);
+            const path     = (input?.value ?? "").trim();
             const tradKey  = Object.keys(TRADITION_FONT_KEYS).find(
               k => TRADITION_FONT_KEYS[k] === row.key
             );
@@ -263,18 +266,20 @@ ${sep}
           ui.notifications.info("PF2e Words of Magic | Fonts saved.");
         },
       },
-      cancel: {
-        icon:  "<i class='fas fa-times'></i>",
-        label: "Cancel",
+      {
+        action: "cancel",
+        icon:   "fas fa-times",
+        label:  "Cancel",
       },
-    },
-    default: "save",
-    render: (html) => {
-      // Wire up Browse buttons
+    ],
+    render: (event, dialog) => {
+      const html = dialog.element;
+      // Wire up Browse buttons — native DOM, no jQuery
       for (const row of ROWS) {
-        html.find(`#wom-browse-${row.key}`).on("click", () => {
-          const input    = html.find(`#wom-input-${row.key}`);
-          const current  = input.val() || DEFAULT_FONT_PATH;
+        html.querySelector(`#wom-browse-${row.key}`)
+            ?.addEventListener("click", () => {
+          const input    = html.querySelector(`#wom-input-${row.key}`);
+          const current  = input?.value || DEFAULT_FONT_PATH;
           const startDir = current.includes("/")
             ? current.substring(0, current.lastIndexOf("/") + 1)
             : FONTS_DIR;
@@ -283,14 +288,15 @@ ${sep}
             type:     "font",
             current,
             callback: async (path) => {
-              input.val(path);
+              if (input) input.value = path;
               await updatePreview(html, row.key, path, row.color);
             },
           }).browse(startDir);
         });
 
         // Live preview on type
-        html.find(`#wom-input-${row.key}`).on("input change", async (ev) => {
+        html.querySelector(`#wom-input-${row.key}`)
+            ?.addEventListener("input", async (ev) => {
           const path = ev.currentTarget.value.trim();
           if (path) await updatePreview(html, row.key, path, row.color);
         });
@@ -299,24 +305,19 @@ ${sep}
         updatePreview(html, row.key, values[row.key], row.color);
       }
     },
-  }, {
-    id:     "wom-font-config",
-    width:  560,
-    height: "auto",
-  });
-
-  dialog.render(true);
+  }).catch(() => {}); // Dismissed dialog resolves to null — ignore
 }
 
 async function updatePreview(html, key, path, color) {
-  const el = html.find(`#wom-preview-${key}`);
-  if (!el.length) return;
+  const el = html.querySelector(`#wom-preview-${key}`);
+  if (!el) return;
   try {
     const family = await ensureFontLoaded(path);
-    el.css("font-family", `"${family}", Georgia, serif`);
-    el.text("ashaah ifrignir vael");
-    el.css("color", color);
+    el.style.fontFamily = `"${family}", Georgia, serif`;
+    el.style.color      = color;
+    el.textContent      = "ashaah ifrignir vael";
   } catch {
-    el.text("(preview unavailable)").css("color", "#888");
+    el.textContent = "(preview unavailable)";
+    el.style.color = "#888";
   }
 }
