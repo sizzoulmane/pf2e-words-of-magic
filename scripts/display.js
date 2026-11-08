@@ -100,15 +100,19 @@ function tokenBounds(t) {
 }
 
 // ── PIXI text style ───────────────────────────────────────────────────────────
-function makeStyle(tradition, isDarkDivine = false, overrides = {}) {
+// Plain options object — used directly by createScrollingText (which builds its
+// own text style) and wrapped in a PIXI.TextStyle for the custom animations.
+// Never spread a PIXI.TextStyle instance: its properties are private-backed
+// getters, so a spread produces _-prefixed keys PIXI ignores.
+function makeStyleOptions(tradition, isDarkDivine = false, overrides = {}) {
   const color      = resolveColor(tradition, isDarkDivine);
   const fontSize   = get("fontSize") ?? 40;
   const fontFamily = resolveFontArray(tradition, isDarkDivine);
   const padding    = Math.ceil(fontSize * 0.75) + 15;
 
-  console.log(`PF2e Words of Magic | makeStyle — font:"${fontFamily[0]}" size:${fontSize} padding:${padding} color:${color}`);
+  console.debug(`PF2e Words of Magic | style — font:"${fontFamily[0]}" size:${fontSize} padding:${padding} color:${color}`);
 
-  return new PIXI.TextStyle({
+  return {
     fontSize,
     fontFamily,
     align:              "center",
@@ -123,7 +127,11 @@ function makeStyle(tradition, isDarkDivine = false, overrides = {}) {
     wordWrap:           false,
     padding,
     ...overrides,
-  });
+  };
+}
+
+function makeStyle(tradition, isDarkDivine = false, overrides = {}) {
+  return new PIXI.TextStyle(makeStyleOptions(tradition, isDarkDivine, overrides));
 }
 
 // ── Spell name visibility ─────────────────────────────────────────────────────
@@ -419,7 +427,7 @@ export class WordsOfMagicDisplay {
     const color    = resolveColor(incantation.tradition, incantation.isDarkDivine);
     const duration = get("scrollDuration") * 1000;
     const offset   = get("radiusOffset") ?? 0;
-    const style    = makeStyle(incantation.tradition, incantation.isDarkDivine);
+    const style    = makeStyleOptions(incantation.tradition, incantation.isDarkDivine);
     const startY   = cy - h / 2 - Math.max(0, offset);
 
     canvas.interface.sortableChildren = true;
@@ -448,6 +456,10 @@ export class WordsOfMagicDisplay {
                    : (TRADITION_LABELS[incantation.tradition] ?? "Unknown");
     const dLabel   = DELIVERY_LABELS[incantation.delivery]   ?? incantation.delivery;
     const elLabel  = cap(incantation.element);
+    // Cantrips auto-heighten, so show "Cantrip 3" rather than a bare rank
+    const rankLabel = incantation.isCantrip
+      ? `Cantrip&nbsp;${incantation.castRank || 1}`
+      : `Rank&nbsp;${incantation.castRank || 1}`;
 
     const fontFamily  = resolveFontFamily(incantation.tradition, incantation.isDarkDivine);
     const phraseStyle = `font-family:"${fontFamily}", Georgia, serif; letter-spacing:3px;`;
@@ -467,11 +479,11 @@ export class WordsOfMagicDisplay {
     <span class="wom-sep">+</span>
     <span class="wom-word wom-element"   title="${elLabel} · ${incantation.tierName} — Element">${incantation.elementWord}</span>
     <span class="wom-sep">+</span>
-    <span class="wom-word wom-signature" title="Signature (Rank ${incantation.castRank || "C"})">${incantation.signatureWord}</span>
+    <span class="wom-word wom-signature" title="Signature (${rankLabel})">${incantation.signatureWord}</span>
   </div>` : ``;
 
     const metaHTML = get("showMetaLine") && !incantation.isEasterEgg
-      ? `<div class="wom-meta">${dLabel} &middot; ${elLabel} (${incantation.tierName}) &middot; Tier&nbsp;${incantation.tier} &middot; Rank&nbsp;${incantation.castRank || "C"}</div>`
+      ? `<div class="wom-meta">${dLabel} &middot; ${elLabel} (${incantation.tierName}) &middot; Tier&nbsp;${incantation.tier} &middot; ${rankLabel}</div>`
       : ``;
 
     const content = `
@@ -486,8 +498,9 @@ export class WordsOfMagicDisplay {
 </div>`.trim();
 
     const visibility = get("chatVisibility") ?? "public";
-    const whisper    = visibility === "gm"   ? ChatMessage.getWhisperRecipients("GM")
-                     : visibility === "self" ? [game.user]
+    // whisper takes user IDs
+    const whisper    = visibility === "gm"   ? game.users.filter(u => u.isGM).map(u => u.id)
+                     : visibility === "self" ? [game.user.id]
                      : [];
 
     await ChatMessage.create({

@@ -1,11 +1,11 @@
 {
   "id": "pf2e-words-of-magic",
   "title": "PF2e Words of Magic",
-  "description": "Tradition-based spell incantations for Pathfinder 2e. Inspired by Ultima's Words of Power \u2014 phonetic phrases appear above casters and in chat whenever a spell is cast, with distinct sounds for Arcane, Primal, Occult, and Divine traditions.",
-  "version": "1.1.0",
+  "description": "Tradition-based spell incantations for Pathfinder 2e. Inspired by Ultima's Words of Power — phonetic phrases appear above casters and in chat whenever a spell is cast, with distinct sounds for Arcane, Primal, Occult, and Divine traditions.",
+  "version": "1.2.0",
   "compatibility": {
     "minimum": "14",
-    "verified": "14.361"
+    "verified": "14.370"
   },
   "relationships": {
     "systems": [
@@ -13,8 +13,8 @@
         "id": "pf2e",
         "type": "system",
         "compatibility": {
-          "minimum": "6.0.0",
-          "verified": "7.12.2"
+          "minimum": "8.0.0",
+          "verified": "8.7.0"
         }
       }
     ]
@@ -41,6 +41,6 @@
   ],
   "url": "https://github.com/sizzoulmane/pf2e-words-of-magic",
   "bugs": "https://github.com/sizzoulmane/pf2e-words-of-magic/issues",
-  "download": "https://github.com/sizzoulmane/pf2e-words-of-magic/releases/latest/download/pf2e-words-of-magic.zip",
+  "download": "https://github.com/sizzoulmane/pf2e-words-of-magic/releases/download/v1.2.0/pf2e-words-of-magic.zip",
   "manifest": "https://raw.githubusercontent.com/sizzoulmane/pf2e-words-of-magic/main/module.json"
 }

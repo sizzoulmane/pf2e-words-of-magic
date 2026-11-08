@@ -1,0 +1,17 @@
+# Store text files with LF line endings in the repo and in your working copy,
+# on every OS. Foundry and GitHub both expect LF; this silences Git's
+# "LF will be replaced by CRLF" warning on Windows.
+* text=auto eol=lf
+
+# Never touch binary files. Fonts must stay byte-for-byte identical or
+# browsers reject them ("OTS parsing error").
+*.ttf   binary
+*.otf   binary
+*.woff  binary
+*.woff2 binary
+*.zip   binary
+*.png   binary
+*.jpg   binary
+*.webp  binary
+*.pdf   binary
+*.xlsx  binary

@@ -87,8 +87,14 @@ Hooks.on("createChatMessage", async (message) => {
   const ctxType = pf2e.context?.type ?? "";
   if (ctxType === "damage-roll" || ctxType === "healing-roll") return;
 
-  const castRank = pf2e.casting?.level ?? pf2e.origin?.level ?? 0;
-  if (castRank === 0 && game.settings.get(MODULE_ID, "suppressCantrips")) return;
+  // Cantrip suppression. PF2e auto-heightens cantrips, so the cast rank is
+  // never 0 — check the cantrip trait on the spell instead.
+  const suppressCantrips = game.settings.get(MODULE_ID, "suppressCantrips");
+  if (suppressCantrips) {
+    let quickSpell = null;
+    try { quickSpell = message.item; } catch { /* resolved below */ }
+    if (quickSpell && WordsOfMagicResolver.isCantrip(quickSpell)) return;
+  }
 
   let incantation;
   try {
@@ -98,6 +104,7 @@ Hooks.on("createChatMessage", async (message) => {
     return;
   }
   if (!incantation) return;
+  if (suppressCantrips && incantation.isCantrip) return;
 
   // Canvas: every client renders locally
   WordsOfMagicDisplay.showFloatingText(message, incantation);
@@ -125,12 +132,30 @@ function _registerSettings() {
 
   game.settings.register(MODULE_ID, "easterEggs", {
     name: "Easter Egg Incantations",
-    hint: "Rare chance (20%) for certain spells to display incantations from other franchises — Ultima, Skyrim, Harry Potter. Styling stays in the caster's tradition. Pure flavor.",
+    hint: "Master switch for easter eggs. Certain spells may speak words of power from other worlds instead of the normal incantation. Styling stays in the caster's tradition. Set how often each source appears with the sliders below.",
     scope:   "world",
     config:  true,
     type:    Boolean,
     default: true,
   });
+
+  // Per-source easter egg chance. 0 turns a source off.
+  const eggSliders = [
+    ["eggChanceUltima",     "Easter Eggs: Ultima Online",
+     "Chance (%) that a matching spell speaks its Ultima Online Words of Power — Magery, Mysticism, Necromancy, and Chivalry. 0 = never."],
+    ["eggChanceSkyrim",     "Easter Eggs: Skyrim Shouts",
+     "Chance (%) that a matching spell bellows its Skyrim dragon shout. 0 = never."],
+    ["eggChanceArmageddon", "Easter Eggs: Armageddon",
+     "Chance (%) that a world-ending spell (Earthquake, Cataclysm, Implosion, Storm of Vengeance, Volcanic Eruption) speaks the eight-word Armageddon incantation. 0 = never."],
+  ];
+  for (const [key, name, hint] of eggSliders) {
+    game.settings.register(MODULE_ID, key, {
+      name, hint,
+      scope: "world", config: true, type: Number,
+      range: { min: 0, max: 100, step: 5 },
+      default: 25,
+    });
+  }
 
   game.settings.register(MODULE_ID, "suppressCantrips", {
     name: "Suppress Cantrip Incantations",
@@ -194,7 +219,7 @@ function _registerSettings() {
   game.settings.registerMenu(MODULE_ID, "fontConfig", {
     name: "Configure Tradition Fonts",
     label: "Configure Fonts…",
-    hint: "Choose a font file for each spell tradition. Opens a file browser pointed at the module's fonts folder. All traditions default to Ultima Runes.",
+    hint: "Choose a font file for each spell tradition. Opens a file browser pointed at the module's fonts folder. Defaults: Ultima Runes (Arcane), Outer Rim AF (Primal), Cthulhu Runes (Occult), Celestial (Divine), Iokharic Bold (Dark Divine).",
     icon: "fas fa-font",
     type: FontConfigApp,
     restricted: true,

@@ -34,7 +34,26 @@ const MODULE_ID = "pf2e-words-of-magic";
 //
 // Multiple phrases per UUID = random pick on trigger.
 
-const EASTER_EGG_CHANCE = 0.25;
+// Each phrase belongs to one source; each source has its own GM-set chance
+// (0–100%, settings "eggChanceUltima" / "eggChanceSkyrim" / "eggChanceArmageddon").
+const EASTER_EGG_ARMAGEDDON = "Vas Kal An Mani In Corp Hur Tym";
+const EASTER_EGG_SKYRIM = new Set([
+  "Fus Ro Dah", "Wuld Nah Kest", "Feim Zii Gron", "Yol Toor Shul", "Fo Krah Diin",
+  "Iiz Slen Nus", "Strun Bah Qo", "Tiid Klo Ul", "Krii Lun Aus", "Zun Haal Viik",
+  "Faas Ru Maar", "Joor Zah Frul", "Su Grah Dun", "Raan Mir Tah", "Kaan Drem Ov",
+  "Laas Yah Nir", "Lok Vah Koor", "Od Ah Viing", "Hun Kaal Zoor", "Zul Mey Gut",
+]);
+const EASTER_EGG_SOURCE_SETTINGS = {
+  ultima:     "eggChanceUltima",
+  skyrim:     "eggChanceSkyrim",
+  armageddon: "eggChanceArmageddon",
+};
+
+function easterEggSource(phrase) {
+  if (phrase === EASTER_EGG_ARMAGEDDON) return "armageddon";
+  if (EASTER_EGG_SKYRIM.has(phrase))    return "skyrim";
+  return "ultima"; // Magery, Mysticism, Necromancy, Chivalry
+}
 
 const EASTER_EGG_UUIDS = {
   // ── UO MAGERY — Cantrips ──────────────────────────────────────────────────
@@ -232,6 +251,17 @@ export class WordsOfMagicResolver {
   }
 
   /**
+   * Cantrip check. PF2e auto-heightens cantrips, so cast rank is never 0 —
+   * the trait (or PF2e's isCantrip getter) is the only reliable signal.
+   */
+  static isCantrip(spell) {
+    if (!spell) return false;
+    if (typeof spell.isCantrip === "boolean") return spell.isCantrip;
+    const traits = spell.system?.traits?.value ?? [];
+    return traits.includes("cantrip");
+  }
+
+  /**
    * Harden cast-rank resolution against the many ways PF2e stores it.
    *
    * Known paths that can carry the actual cast rank:
@@ -250,7 +280,15 @@ export class WordsOfMagicResolver {
   static resolveCastRank(message, spell) {
     const pf2e = message.flags?.pf2e ?? {};
 
-    // Flag paths — try each in priority order
+    // PF2e 6+ canonical path: flags.pf2e.origin.castRank. This is what
+    // ChatMessagePF2e#item itself uses to load the heightened spell variant.
+    const canonical = pf2e.origin?.castRank;
+    if (Number.isInteger(canonical) && canonical > 0) return canonical;
+
+    // Spell variant loaded via message.item carries the cast rank as .rank
+    if (Number.isInteger(spell?.rank) && spell.rank > 0 && spell.parent) return spell.rank;
+
+    // Legacy flag paths — older system builds
     const fromFlags =
       pf2e.casting?.level ??
       pf2e.spellLevel ??
@@ -408,6 +446,10 @@ export class WordsOfMagicResolver {
       if (entry?.tradition) return entry.tradition;
     }
 
+    // PF2e also stamps the casting tradition directly on the message
+    const flagTradition = messageFlags?.casting?.tradition;
+    if (["arcane", "primal", "occult", "divine"].includes(flagTradition)) return flagTradition;
+
     // Primary non-innate spellcasting entry
     if (actor?.spellcasting) {
       const primary = actor.spellcasting.find(e => !e.isInnate && e.tradition);
@@ -422,23 +464,23 @@ export class WordsOfMagicResolver {
   }
 
   // ── VARIABLE SUMMON DIALOG ──────────────────────────────────────────────────
-  static promptVariableElement(summonEntry) {
-    return new Promise((resolve) => {
-      const buttons = {};
-      for (const opt of (summonEntry.options ?? ["aether"])) {
-        buttons[opt] = {
-          label: opt.charAt(0).toUpperCase() + opt.slice(1),
-          callback: () => resolve(opt),
-        };
-      }
-      new Dialog({
-        title: `PF2e Words of Magic — ${summonEntry.name ?? "Summon"}`,
+  static async promptVariableElement(summonEntry) {
+    const options = summonEntry.options ?? ["aether"];
+    try {
+      const choice = await foundry.applications.api.DialogV2.wait({
+        window:  { title: `PF2e Words of Magic — ${summonEntry.name ?? "Summon"}` },
         content: `<p style="margin:8px 0">Which element is being summoned?</p>`,
-        buttons,
-        default: (summonEntry.options ?? ["aether"])[0],
-        close: () => resolve("aether"),
-      }).render(true);
-    });
+        buttons: options.map((opt, i) => ({
+          action:  opt,
+          label:   opt.charAt(0).toUpperCase() + opt.slice(1),
+          default: i === 0,
+        })),
+        rejectClose: false,
+      });
+      return options.includes(choice) ? choice : "aether";
+    } catch {
+      return "aether";
+    }
   }
 
   // ── WORD LOOKUP ─────────────────────────────────────────────────────────────
@@ -473,13 +515,22 @@ export class WordsOfMagicResolver {
     const origin = pf2eFlags.origin;
     if (origin.type !== "spell") return null;
 
-    // Load the spell item
-    let spell;
+    // Load the spell item. ChatMessagePF2e#item is preferred: it resolves
+    // embedded spells (scrolls, wands, staves), overlays/variants, and loads
+    // the spell at its actual cast rank. Fall back to the raw origin UUID.
+    let spell = null;
     try {
-      spell = await fromUuid(origin.uuid);
-    } catch (e) {
-      console.warn(`PF2e Words of Magic | Could not load spell UUID: ${origin.uuid}`, e);
-      return null;
+      const msgItem = message.item;
+      if (msgItem?.isOfType?.("spell")) spell = msgItem;
+    } catch { /* fall through */ }
+
+    if (!spell) {
+      try {
+        spell = await fromUuid(origin.uuid);
+      } catch (e) {
+        console.warn(`PF2e Words of Magic | Could not load spell UUID: ${origin.uuid}`, e);
+        return null;
+      }
     }
     if (!spell) return null;
 
@@ -538,6 +589,7 @@ export class WordsOfMagicResolver {
     return {
       spell,
       spellName:     spell.name,
+      isCantrip:     this.isCantrip(spell),
       castRank,
       tier,
       tierName,
@@ -558,7 +610,7 @@ export class WordsOfMagicResolver {
    * UUID-based easter egg lookup.
    *
    * Spell items on actors have a local UUID (Actor.xxx.Item.yyy) — not the
-   * compendium ID. The compendium source is stored in spell.flags.core.sourceId
+   * compendium ID. The compendium source is stored in spell._stats.compendiumSource
    * as "Compendium.pf2e.spells-srd.Item.{itemId}". We check that first, then
    * fall back to the origin UUID in the message flags in case the spell was
    * cast directly from the compendium or a synthetic context.
@@ -566,8 +618,12 @@ export class WordsOfMagicResolver {
   static _resolveEasterEgg(message, spell) {
     if (!game.settings.get(MODULE_ID, "easterEggs")) return null;
 
-    // Primary: compendium source ID stored on the spell item
-    const sourceId  = spell?.flags?.core?.sourceId ?? spell?.sourceId ?? "";
+    // Primary: compendium source. Foundry v12+ stores it in _stats.compendiumSource;
+    // PF2e's item.sourceId getter wraps it. flags.core.sourceId is legacy only.
+    const sourceId  = spell?._stats?.compendiumSource
+                   ?? spell?.sourceId
+                   ?? spell?.flags?.core?.sourceId
+                   ?? "";
     // Fallback: pf2e.origin.uuid — may already be a compendium UUID in some flows
     const originId  = message.flags?.pf2e?.origin?.uuid ?? "";
     // Check both; prefer whichever contains the known compendium namespace
@@ -582,10 +638,24 @@ export class WordsOfMagicResolver {
 
     const phrases = EASTER_EGG_UUIDS[itemId];
     if (!phrases?.length) return null;
-    if (Math.random() > EASTER_EGG_CHANCE) return null;
 
-    const phrase = phrases[Math.floor(Math.random() * phrases.length)];
-    console.debug(`PF2e Words of Magic | Easter egg: "${phrase}" for ${itemId} (${spell?.name})`);
+    // Group this spell's phrases by source. Sources whose slider is 0 drop out.
+    // Pick one remaining source at random, then roll its slider once — so a
+    // spell shared by Ultima and Skyrim fires at the same overall rate as a
+    // single-source spell (when the sliders match), not double.
+    const bySource = {};
+    for (const p of phrases) (bySource[easterEggSource(p)] ??= []).push(p);
+
+    const chanceOf = src => Number(game.settings.get(MODULE_ID, EASTER_EGG_SOURCE_SETTINGS[src]) ?? 0);
+    const live = Object.keys(bySource).filter(src => chanceOf(src) > 0);
+    if (!live.length) return null;
+
+    const src = live[Math.floor(Math.random() * live.length)];
+    if (Math.random() * 100 >= chanceOf(src)) return null;
+
+    const pool   = bySource[src];
+    const phrase = pool[Math.floor(Math.random() * pool.length)];
+    console.debug(`PF2e Words of Magic | Easter egg (${src}): "${phrase}" for ${itemId} (${spell?.name})`);
     return phrase;
   }
 

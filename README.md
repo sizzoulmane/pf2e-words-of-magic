@@ -24,8 +24,8 @@ Dark Divine casters (fiend, undead, unholy, and similar traits) override the Div
 
 | Dependency | Version |
 |-----------|---------|
-| Foundry VTT | v13+ (verified 13.348) |
-| PF2e System | v6.0+ (verified 7.9.1) |
+| Foundry VTT | v14+ (verified 14.370) |
+| PF2e System | v8.0+ (verified 8.7.0) |
 
 No other modules required.
 
@@ -44,7 +44,7 @@ No other modules required.
 Paste into **Settings → Manage Modules → Install Module**:
 
 ```
-https://github.com/sizzoulmane/pf2e-words-of-magic/releases/latest/download/module.json
+https://raw.githubusercontent.com/sizzoulmane/pf2e-words-of-magic/main/module.json
 ```
 
 ---
@@ -103,6 +103,19 @@ All settings are world-scoped (GM-controlled) unless noted.
 | Enable PF2e Words of Magic | On | Master switch |
 | Suppress Cantrip Incantations | Off | Reduce noise at high level play |
 | Default Tradition Fallback | Arcane | Used when tradition cannot be determined |
+
+### Easter Eggs
+
+Certain spells may speak words of power from other worlds instead of their normal incantation. The tradition's font and color stay the same; only the words change.
+
+| Setting | Default | Description |
+|---|---|---|
+| Easter Egg Incantations | On | Master switch |
+| Easter Eggs: Ultima Online | 25% | Words of Power from Magery, Mysticism, Necromancy and Chivalry |
+| Easter Eggs: Skyrim Shouts | 25% | Dragon shouts |
+| Easter Eggs: Armageddon | 25% | The eight-word incantation, reserved for world-ending spells |
+
+Set a slider to 0 to turn that source off. When a spell has phrases from more than one source, one source is picked at random and rolled once, so the spell fires at that source's chance rather than both chances combined.
 
 ### Canvas
 

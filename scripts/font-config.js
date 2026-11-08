@@ -284,7 +284,9 @@ ${sep}
             ? current.substring(0, current.lastIndexOf("/") + 1)
             : FONTS_DIR;
 
-          new FilePicker({
+          // Namespaced FilePicker — the global was deprecated in v13, removed in v15
+          const FilePickerImpl = foundry.applications.apps.FilePicker.implementation;
+          new FilePickerImpl({
             type:     "font",
             current,
             callback: async (path) => {
